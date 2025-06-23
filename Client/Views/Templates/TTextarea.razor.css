@@ -1,0 +1,36 @@
+._q {
+    resize: none;
+    white-space: pre-wrap;       /* Preserve line breaks and wrap text */
+    word-wrap: break-word;       /* Break long words if needed */
+    overflow-wrap: break-word;   /* Modern alternative to word-wrap */
+    overflow-y: auto;           /* Show scrollbar when needed */
+
+    caret-color: var(--color-border);
+    box-sizing: border-box;
+    -webkit-flex: auto;
+    flex: auto;
+    display: block;
+    margin: 0;
+    padding: 0 0.75rem 0 0;
+    
+    line-height: normal;
+    font-size: 1rem;
+    height: 100%;
+    width: 100%;
+    
+    background-color: transparent;
+    outline: none;
+    
+    border-radius: 0;
+    border-top: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-right: var(--line-width) solid var(--color-border);
+}
+._q::placeholder {
+    color: var(--color-border);
+    opacity: 0.5;
+}
+._q:focus { 
+    
+}

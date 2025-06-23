@@ -1,0 +1,49 @@
+@* 
+    A component that copies content to the clipboard when clicked and provides visual feedback.
+*@
+@inherits CaptureUnmatchedParameters
+@inject IJSRuntime JsRuntime
+@typeparam TItem
+
+<div class="@Classes _q" @attributes="@Attributes" @onclick="_onCopy">
+    @ChildContent(Value)
+    @if (_copied)
+    {
+        <p class="_qp">copied!</p>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the value to be copied to clipboard.
+    /// </summary>
+    [Parameter] public TItem? Value { get; set; }
+
+    /// <summary>
+    /// Gets or sets the template for rendering the content.
+    /// </summary>
+    /// <remarks>
+    /// Required parameter. Receives the current Value as context.
+    /// </remarks>
+    [Parameter] public required RenderFragment<TItem?> ChildContent { get; set; }
+    
+    private bool _copied = false;
+    
+    /// <summary>
+    /// Handles the copy operation when the component is clicked.
+    /// </summary>
+    /// <remarks>
+    /// Performs the following:
+    /// 1. Sets copied state to true (shows feedback)
+    /// 2. Writes value to clipboard using JS interop
+    /// 3. Waits 1 second
+    /// 4. Resets copied state (hides feedback)
+    /// </remarks>
+    private async Task _onCopy() 
+    {
+        _copied = true;
+        await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Value); 
+        await Task.Delay(1000);
+        _copied = false;
+    }
+}

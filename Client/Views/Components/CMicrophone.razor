@@ -1,0 +1,45 @@
+@* 
+    A microphone control component with audio capture capabilities.
+    Features:
+    - Toggleable microphone enable/disable state
+    - Supports both discrete audio chunks and continuous streams
+    - Visual feedback for recording state
+*@
+<TMicrophone Bytes="Bytes" StreamBytes="StreamBytes" @bind-Enable="Enable">
+    <div class="_q" onclick="@context.Item1">
+        <div class="_w">
+            <svg width="65" height="65" viewBox="0 0 65 65" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="32.5" cy="32.5" r="32.5" fill="#121619"/>
+            </svg>
+        </div>
+        <span class="_e @(context.Item2 ? "fi_mic-off-icon" : "fi_mic-icon")"></span>
+    </div>
+</TMicrophone>
+
+@code {
+    /// <summary>
+    /// Gets or sets the callback for receiving audio data as an observable stream.
+    /// </summary>
+    /// <remarks>
+    /// Provides continuous audio data as a stream of byte arrays.
+    /// Use this for real-time audio processing scenarios.
+    /// </remarks>
+    [Parameter] public EventCallback<IObservable<byte[]>> StreamBytes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback for receiving discrete audio chunks.
+    /// </summary>
+    /// <remarks>
+    /// Provides individual audio packets as byte arrays.
+    /// Use this for discrete audio capture scenarios.
+    /// </remarks>
+    [Parameter] public EventCallback<byte[]> Bytes { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the microphone is enabled.
+    /// </summary>
+    /// <remarks>
+    /// Defaults to true. When bound, allows external control of microphone state.
+    /// </remarks>
+    [Parameter] public bool Enable { get; set; } = true;
+}

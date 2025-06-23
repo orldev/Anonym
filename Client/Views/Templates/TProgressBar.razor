@@ -1,0 +1,19 @@
+@* 
+    A progress bar component that visually displays a percentage value.
+*@
+@inherits CaptureUnmatchedParameters
+
+<div class="@Classes _q" @attributes="@Attributes">
+    <div class="_w" style="width: @(Value)%"></div>
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the current progress value as a percentage (0-100).
+    /// </summary>
+    /// <remarks>
+    /// The value should be between 0 and 100. Values outside this range
+    /// will still work but may not render as expected.
+    /// </remarks>
+    [Parameter] public int Value { get; set; }
+}

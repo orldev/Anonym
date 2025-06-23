@@ -1,0 +1,37 @@
+@* 
+    A route component that visually represents a connection state with customizable content.
+*@
+<TRoute Value="@Value" Metadata="@Metadata">
+    <div class="_q">
+        <div class="_w">
+            <div class="_e">
+                <svg width="65" height="65" viewBox="0 0 65 65" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="32.5" cy="32.5" r="32.5" fill="#5C0000"/>
+                </svg>
+            </div>
+            <span class="_r @(Metadata is null ? "fi_phone-off-icon" : "fi_phone-icon")"></span>
+        </div>
+        @ChildContent
+    </div>
+</TRoute>
+
+@code {
+    /// <summary>
+    /// Gets or sets the route value that identifies this connection.
+    /// </summary>
+    [Parameter] public string? Value { get; set; }
+
+    /// <summary>
+    /// Gets or sets the child content to be rendered inside the route container.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets the metadata dictionary containing additional route information.
+    /// </summary>
+    /// <remarks>
+    /// When null, displays a "phone-off" icon indicating no connection.
+    /// When populated, displays a "phone" icon indicating active connection.
+    /// </remarks>
+    [Parameter] public Dictionary<string, string>? Metadata { get; set; }
+}

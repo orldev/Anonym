@@ -1,0 +1,156 @@
+@* 
+    A dialogue item component with context menu functionality for chat/messaging interfaces.
+    Features:
+    - Context menu with delete/rename options
+    - Interactive user information display
+    - Timestamp and message preview
+    - Visual indicators for new messages
+    - Editable username field
+    - Multiple content type handling
+*@
+@inherits CaptureUnmatchedParameters
+
+<TContextmenu>
+    <ChildContent>
+        <div class="@Classes _no_s _q" @attributes="@Attributes">
+            <div class="_qs">
+                <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle class="_t" cx="32" cy="32" r="32" fill="#7F868C"/>
+                </svg>
+            </div>
+            <div class="_w" @onclick="_onSelect">
+                <div class="_e">
+                    @if (_isEdit)
+                    {
+                        <!-- Username edit mode -->
+                        <TInputText Label="@Value.UserId" @bind-Value="Value.Username" 
+                                    @onfocusout="@(e => _isEdit = false)"/>
+                    }
+                    else
+                    {
+                        <!-- Username display mode -->
+                        <p class="_ep">@(string.IsNullOrEmpty(Value.Username) ? Value.UserId : Value.Username)</p>      
+                    }
+                    
+                    @if (_threshold)
+                    {
+                        <!-- New message indicator -->
+                        <div class="_r">
+                            <p class="_rp">new message</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Timestamp display -->
+                        <div class="_r">
+                            <p class="_rp">@_time</p>
+                            <p class="_rp">@_date/</p>
+                        </div>
+                    }
+                </div>
+                @if (string.IsNullOrEmpty(_date))
+                {
+                    <!-- Empty state prompt -->
+                    <p class="_wp">click to start the dialogue...</p>
+                }
+                else
+                {
+                    <!-- Message preview -->
+                    <p class="_wp">@_context</p>
+                }
+            </div>
+        </div>
+    </ChildContent>
+    <ItemsContent>
+        <!-- Context menu options -->
+        <TContextmenuItem Label="delete" @onclick="async () => await _onDelete(context)"/>
+        <TContextmenuItem Label="rename" @onclick="async () => await _onRename(context)"/>
+    </ItemsContent>
+</TContextmenu>
+
+@code {
+    /// <summary>
+    /// Gets or sets the dialogue data to display.
+    /// </summary>
+    /// <remarks>
+    /// Required parameter containing:
+    /// - User information (UserId/Username)
+    /// - Message history
+    /// </remarks>
+    [Parameter] public required Dialogue Value { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback invoked when the item is selected.
+    /// </summary>
+    /// <remarks>
+    /// Required parameter. Not triggered during edit mode.
+    /// </remarks>
+    [Parameter, EditorRequired] public required EventCallback<Dialogue> OnSelect { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback invoked when the item is deleted.
+    /// </summary>
+    /// <remarks>
+    /// Required parameter. Triggered from context menu.
+    /// </remarks>
+    [Parameter, EditorRequired] public required EventCallback<Dialogue> OnDelete { get; set; }
+
+    private string? _time;      // Formatted time of last message
+    private string? _date;      // Formatted date of last message
+    private string? _context;   // Preview text of last message
+    private bool _threshold;    // New message indicator flag
+    private bool _isEdit;       // Username edit mode flag
+
+    /// <summary>
+    /// Handles primary click selection of the dialogue item.
+    /// </summary>
+    private async Task _onSelect()
+    {   
+        if (_isEdit) return;  // Skip if in edit mode
+        await OnSelect.InvokeAsync(Value);
+    }
+    
+    /// <summary>
+    /// Initiates username editing mode.
+    /// </summary>
+    private async Task _onRename(EventCallback action)
+    {
+        _isEdit = true;
+        await action.InvokeAsync();
+    }
+    
+    /// <summary>
+    /// Handles dialogue deletion.
+    /// </summary>
+    private async Task _onDelete(EventCallback action)
+    {
+        await OnDelete.InvokeAsync(Value);
+        await action.InvokeAsync();
+    }
+
+    /// <summary>
+    /// Updates display values when parameters change.
+    /// </summary>
+    /// <remarks>
+    /// Derives:
+    /// - Timestamps from last message
+    /// - Preview text based on content type
+    /// - New message indicator state
+    /// </remarks>
+    protected override void OnParametersSet()
+    {
+        var message = Value.Messages.FirstOrDefault();
+        _time = message?.DateTime.ToString("hh:mm:ss.fff");
+        _date = message?.DateTime.ToString("dd");
+        _threshold = DateTime.Now.EqualsWithin(message?.DateTime ?? DateTime.Now, TimeSpan.FromSeconds(1));
+        _context = message?.Context?.MimeType switch
+        {
+            "string" => message.Context.Bytes.GetUtf8String(),
+            "error" => "Remotely, the data size exceeds the allowed size",
+            "voice" => "Voice message",
+            "call" => "Makes a call",
+            _ => "File received"
+        };
+        base.OnParametersSet();
+    }
+}

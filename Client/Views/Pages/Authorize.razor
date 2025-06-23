@@ -1,0 +1,153 @@
+@* 
+    An authentication component that handles both persistent and temporary login sessions.
+    Features:
+    - Two authentication modes (persistent and disposable)
+    - Form validation with error handling
+    - Secure secret management
+    - Token generation
+    - Session lifecycle control
+    - Notification system integration
+*@
+@page "/authorize"
+@inject HttpClient HttpClient
+@inject NavigationManager Navigation
+@inject ILocalStorage LocalStorage
+@inject IJSRuntime JsRuntime
+<PageTitle>Authorize</PageTitle>
+
+<TNotification @ref="_provider"/>
+<section>
+    <div class="_q">
+        <div class="_w">
+            <p class="_wp">#anonym</p>
+            <EditForm class="_e" EditContext="@_editContext" OnValidSubmit="Submit">
+                <ObjectGraphDataAnnotationsValidator />
+                <div class="_r">
+                    <div class="_t">
+                        <!-- Secret input field -->
+                        <TInputText Label="secret" @bind-Value="_secret.Value"/>
+                        <ValidationMessage For="@(() => _secret.Value)"/>
+                    </div>
+                    <div class="_y">
+                        <!-- Persistent login button -->
+                        <button type="submit" class="_yb">
+                            enter
+                        </button>
+                        <div class="_u">
+                            <!-- Disposable login button -->
+                            <button type="button" class="_yb" @onclick="Disposable">
+                                one-time login
+                            </button>
+                            <div class="_i">
+                                <p class="_ip">after you exit or once the 8-hour period expires, all your correspondence and login data will be permanently deleted.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</section>
+
+@code {
+    private TNotification? _provider; // Notification service reference
+    private EditContext? _editContext; // Form validation context
+    private Secret _secret = new(); // Authentication secret
+    
+    /// <summary>
+    /// Initializes the form validation context.
+    /// </summary>
+    protected override Task OnInitializedAsync()
+    {
+        _editContext = new EditContext(_secret);
+        return base.OnInitializedAsync();
+    }
+
+    /// <summary>
+    /// Handles disposable (temporary) login creation.
+    /// </summary>
+    /// <remarks>
+    /// Creates a temporary session that:
+    /// - Lasts 8 hours maximum
+    /// - Automatically clears all data on expiration
+    /// - Uses different token lifecycle
+    /// </remarks>
+    private async Task Disposable()
+    {
+        _secret.AccessToken = await CreateAccessToken();
+        _secret.Lifecycle = Lifecycle.Temporary;
+        
+        await LocalStorage.ClearAsync();
+        await PersistSecretAndReloadAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    /// <summary>
+    /// Handles form submission for persistent login.
+    /// </summary>
+    /// <remarks>
+    /// Performs the following:
+    /// 1. Creates access token
+    /// 2. Sets 24-hour expiration
+    /// 3. Validates existing credentials if present
+    /// 4. Handles success/error cases
+    /// 5. Persists session data
+    /// </remarks>
+    private async Task Submit()
+    {
+        try
+        {
+            _secret.AccessToken = await CreateAccessToken();
+            _secret.Lifecycle = Lifecycle.Boundless;
+            _secret.Expiration = DateTime.UtcNow.AddHours(24);
+            
+            if (await LocalStorage.ContainKeyAsync(Secret.Key))
+            {
+                var secret = await LocalStorage.GetObjectAsync<Secret>(Secret.Key);
+                if (_secret.Value == secret?.Value)
+                {
+                    await PersistSecretAndReloadAsync();
+                }
+                else
+                {
+                    _provider?._onBuild("#error", 
+                        NotificationText.AuthenticationFailure, 
+                        NotificationLevel.Error);
+                    await LocalStorage.ClearAsync();
+                }
+            }
+            else
+            {
+                await PersistSecretAndReloadAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _provider?._onBuild("#error", ex.Message, NotificationLevel.Error);
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    /// <summary>
+    /// Persists the authentication secret and reloads the application.
+    /// </summary>
+    private async Task PersistSecretAndReloadAsync()
+    {
+        await LocalStorage.SaveObjectAsync(Secret.Key, _secret);
+        Navigation.NavigateTo("/", true);
+    }
+    
+    /// <summary>
+    /// Generates a new access token from the authentication server.
+    /// </summary>
+    /// <returns>The generated access token</returns>
+    /// <exception cref="HttpRequestException">Thrown if token generation fails</exception>
+    private async Task<string> CreateAccessToken()
+    {
+        var response = await HttpClient.PostAsJsonAsync("authentication/signup", _secret.UserIdentifier);
+        if (response.IsSuccessStatusCode)
+            return await response.Content.ReadAsStringAsync();
+        
+        return "";
+    }
+}

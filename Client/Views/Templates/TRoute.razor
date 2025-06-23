@@ -1,0 +1,63 @@
+@* 
+    A clickable div component that handles navigation after a delay, with support for metadata-based routing.
+*@
+@inject NavigationManager Navigation
+@inherits CaptureUnmatchedParameters
+
+<div class="@Classes _q" @attributes="@Attributes" @onclick="@_onTask">
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the target navigation value.
+    /// </summary>
+    /// <remarks>
+    /// When specified without metadata, this value is used for navigation after removing the first character.
+    /// Example: Value "/example" navigates to "/vo/example".
+    /// </remarks>
+    [Parameter] public string? Value { get; set; }
+
+    /// <summary>
+    /// Gets or sets the child content to render inside the div.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets optional metadata for advanced navigation scenarios.
+    /// </summary>
+    /// <remarks>
+    /// When metadata contains an "invite" key, its value is used for navigation (after removing first character).
+    /// Takes precedence over the Value parameter when present.
+    /// </remarks>
+    [Parameter] public Dictionary<string, string>? Metadata { get; set; }
+
+    /// <summary>
+    /// Handles the click event with delayed navigation logic.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <remarks>
+    /// Navigation behavior:
+    /// 1. Waits 1 second before navigating (Task.Delay)
+    /// 2. If Metadata contains "invite" key, uses that value for navigation
+    /// 3. Otherwise, uses Value parameter for navigation
+    /// 4. Falls back to root ("/") if no valid target is specified
+    /// All navigation paths have first character removed and are prefixed with "/vo/"
+    /// </remarks>
+    private async Task _onTask()
+    {
+        await Task.Delay(1000);
+        if (Metadata is null)
+        {
+            Navigation.NavigateTo(string.IsNullOrEmpty(Value) ? "/" : $"/vo/{Value.Remove(0, 1)}", true);
+            return;
+        }
+        
+        if (Metadata.TryGetValue("invite", out var value))
+        {
+            if(string.IsNullOrEmpty(value)) return;
+            
+            Navigation.NavigateTo($"/vo/{value.Remove(0, 1)}", true);   
+        }
+    }
+}

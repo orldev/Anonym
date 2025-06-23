@@ -1,0 +1,42 @@
+/* Mobile */
+section {
+    display: grid;
+    grid-template-columns: 1fr;
+    column-gap: 4rem;
+    align-items: start;
+    justify-content: start;
+    padding: 1rem 1rem 0;
+}
+.box-a{}
+.box-b{}
+
+/* Default rule (applies below 900px) */
+@media not all and (min-width: 900px) {
+    :has(input[type="checkbox"]:checked) ::deep .box-a {
+        z-index: 0;
+    }
+    :has(input[type="checkbox"]:checked) ::deep .box-b {
+        z-index: -1;
+    }
+}
+/* Desktop */
+@media (min-width: 900px) {
+    section {
+        grid-template-columns: min(38.7%, 100%) min(55.4%, 100%);
+        padding: 1.5rem 6.25rem 0;
+    }
+    ::deep .box-a {
+        z-index: 1;
+        grid-area: auto;
+    }
+    ::deep .box-b {
+        grid-area: auto;
+    }
+}
+@media (min-width: 900px) and (max-width: 1125px) {
+    section {
+        justify-content: space-around;
+        column-gap: normal;
+        padding: 1.5rem 1rem 0;
+    }
+}

@@ -1,0 +1,21 @@
+@* 
+    A component that safely renders text with preserved line breaks as HTML line breaks.
+*@
+@using System.Web
+@using System.Text.RegularExpressions;
+
+@if (Value is not null)
+{
+    @((MarkupString)Regex.Replace(HttpUtility.HtmlEncode(Value), "\r?\n|\r", "<br />"))   
+}
+
+@code {
+    /// <summary>
+    /// Gets or sets the text value to render with preserved line breaks.
+    /// </summary>
+    /// <remarks>
+    /// The text will be HTML-encoded before processing, with line breaks converted to &lt;br&gt; tags.
+    /// When null, nothing will be rendered.
+    /// </remarks>s
+    [Parameter] public string? Value { get; set; }
+}

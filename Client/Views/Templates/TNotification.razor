@@ -1,0 +1,67 @@
+@* 
+    A notification component that displays and manages a collection of notification messages.
+    This component:
+    - Displays notifications in a vertical list
+    - Supports click-to-dismiss functionality
+    - Provides methods for adding new notifications
+    - Automatically refreshes when notifications change
+*@
+@implements IAsyncDisposable
+
+<div class="_q">
+    @foreach (var item in _provider.Notifications)
+    {
+        <div class="_w" @onclick="() => _provider.OnRemove(item)">
+            <div class="_e">
+                <p class="_ep">@item.Title</p>
+                <div class="_r">
+                    <p class="_rp">@item.CreatedAt.ToString("hh:mm:ss.fff")</p>
+                    <p class="_rp">@item.CreatedAt.ToString("dd")/</p>
+                </div>
+            </div>
+            <p class="_wp">@item.Message</p>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly NotificationProvider _provider = new();
+
+    /// <summary>
+    /// Initializes the component and sets up notification refresh handling.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        _provider.OnRefresh += async () => await InvokeAsync(StateHasChanged);
+        await base.OnInitializedAsync();
+    }
+
+    /// <summary>
+    /// Creates and displays a new notification.
+    /// </summary>
+    /// <param name="title">The title of the notification.</param>
+    /// <param name="message">The message content of the notification.</param>
+    /// <param name="level">The severity level of the notification (defaults to Info).</param>
+    /// <remarks>
+    /// The notification will be added to the collection and displayed immediately.
+    /// Each notification includes a timestamp of when it was created.
+    /// </remarks>
+    public void _onBuild(string title, string message, NotificationLevel level = NotificationLevel.Info) 
+        => _provider.OnBuild(new Notification
+        {
+            Title = title,
+            Message = message,
+            Level = level
+        });
+
+    /// <summary>
+    /// Cleans up event subscriptions and disposes the notification provider.
+    /// </summary>
+    /// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
+    public ValueTask DisposeAsync()
+    {
+        _provider.OnRefresh -= null;
+        _provider.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

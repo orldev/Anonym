@@ -1,0 +1,41 @@
+@* 
+    A reusable audio player component that supports both static byte arrays and observable streams.
+*@
+<TAudioPlayer Bytes="@Bytes" StreamBytes="@StreamBytes" AutoPlay="false">
+    <div class="_q">
+        <div class="_w" onclick="@context.Item1">
+            <div class="_e">
+                <svg width="54" height="54" viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="27" cy="27" r="27" fill="#121619"/>
+                </svg>
+            </div>
+            <span class="_r @(context.Item2 ? "fi_pause-icon" : "fi_play-icon")"></span>
+        </div>
+        @ChildContent
+    </div>
+</TAudioPlayer>
+
+@code {
+    /// <summary>
+    /// Gets or sets the child content to be rendered inside the audio player container.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets the audio data as a byte array.
+    /// </summary>
+    /// <remarks>
+    /// This is used for pre-loaded audio content. 
+    /// Mutually exclusive with <see cref="StreamBytes"/>.
+    /// </remarks>
+    [Parameter] public byte[]? Bytes { get; set; }
+
+    /// <summary>
+    /// Gets or sets an observable stream of audio data bytes.
+    /// </summary>
+    /// <remarks>
+    /// This is used for real-time audio streaming.
+    /// Mutually exclusive with <see cref="Bytes"/>.
+    /// </remarks>
+    [Parameter] public IObservable<byte[]>? StreamBytes { get; set; }
+}

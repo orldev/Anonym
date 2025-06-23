@@ -1,0 +1,166 @@
+@* 
+    A real-time voice communication component with waveform visualization and activity tracking.
+    Features:
+    - Bi-directional voice streaming
+    - Encryption
+    - Visual waveform display
+    - Activity detection and tracking
+    - Mute state visualization
+    - Call duration timer
+    - Network error handling
+*@
+@page "/vo/{TransferId}"
+@inject HubConnection HubConnection
+@inject IReactiveTransferReceiver Receiver
+@inject IReactiveTransferSender Sender
+@inject ISymmetricCipher Cipher
+@inject ILogger<Vo> Logger
+@using System.Reactive.Linq
+@implements IAsyncDisposable
+@attribute [Authorize]
+<PageTitle>Speak</PageTitle>
+
+<section>
+    <!-- Audio player with auto-playback of received streams -->
+    <TAudioPlayer StreamBytes="@_tracker.DataStream" AutoPlay="true">
+        <div class="_q">
+            @if (_mute)
+            {
+                <!-- Mute state visualization -->
+                <svg width="350" height="350" viewBox="0 0 350 350" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="175" cy="175" r="175" fill="#121619"/>
+                </svg>
+            }
+            else
+            {
+                <!-- Active voice waveform display -->
+                <TWaveform @ref="_waveform"/>
+            }
+            <!-- Call duration timer or waiting state -->
+            @if (_tracker.Enable)
+            {
+                <TStopwatch Enable="true" Context="timespan">
+                    <p class="_qp">@timespan</p>
+                </TStopwatch>
+            }
+            else
+            {
+                <p class="_qp">waiting</p>
+            }
+        </div>
+    </TAudioPlayer>
+    <div class="_w">
+        <CMicrophone StreamBytes="@_onStream"/>
+        <CCall/>
+    </div>
+</section>
+
+@code {
+    [Parameter] public string? TransferId { get; set; }  // Target user/connection ID
+    
+    private readonly ReactiveActivityTracker<byte[]> _tracker = new(); // Voice activity tracker
+    private IDisposable? _subscription; // Stream subscription
+    private TWaveform? _waveform; // Waveform visualization reference
+    private bool _mute; // Mute state flag
+    private const string Channel = "voice"; // Communication channel name
+
+    /// <summary>
+    /// Handles incoming voice streams from the microphone.
+    /// </summary>
+    /// <param name="observable">Stream of voice data chunks</param>
+    /// <remarks>
+    /// Performs:
+    /// 1. Encryption of each chunk
+    /// 2. Network transmission
+    /// 3. Waveform updates
+    /// 4. Mute state management
+    /// 5. Error handling and cleanup
+    /// </remarks>
+    private void _onStream(IObservable<byte[]> observable)
+    {
+        _subscription?.Dispose();
+        _subscription = observable
+            .SelectMany(async chunk => {
+                try
+                {
+                    var encrypt = await Cipher.EncryptAsync(chunk);
+                    await Sender.SendAsync($"#{TransferId}", encrypt, encrypt.Length);
+                    
+                    if (_waveform is not null)
+                    {
+                        await _waveform.Update(chunk);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Logger.LogError("{Error}", e.Message);
+                    await DisposeAsync();
+                }
+                return false;
+            })
+            .Merge(Observable.Return(true))
+            .Merge(observable
+                .Throttle(TimeSpan.FromSeconds(2))
+                .Select(_ => true))
+            .DistinctUntilChanged()
+            .Do(enable =>
+            {
+                _mute = enable;
+                StateHasChanged();
+            })
+            .Subscribe(
+                _ => { /* Optional result handling */ },
+                ex => Logger.LogError("{Error}", ex.Message)
+            );
+    }
+
+    /// <summary>
+    /// Initializes the voice communication session.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        await HubConnection.StartAsync();
+        
+        Sender.SetAcknowledgeReceipt(false);
+        Sender.SetChannel(Channel);
+        
+        Receiver.SetChannel(Channel);
+        Receiver.OnChunkReceived += ReceiverOnOnChunkReceived;
+        
+        _tracker.EnableChanged += OnEnableChanged;
+    }
+    
+    /// <summary>
+    /// Handles activity state changes.
+    /// </summary>
+    private void OnEnableChanged() => InvokeAsync(StateHasChanged);
+    
+    /// <summary>
+    /// Processes incoming voice chunks.
+    /// </summary>
+    private async Task ReceiverOnOnChunkReceived(string targetId, byte[] chunk)
+    {
+        try
+        {
+            var decrypt = await Cipher.DecryptAsync(chunk);
+            _tracker.OnNext(decrypt);
+        }
+        catch (Exception e)
+        {
+            Logger.LogError("{Error}", e.Message);
+            await DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// Cleans up resources when the component is disposed.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        _subscription?.Dispose();
+        _tracker.Dispose();
+        await HubConnection.DisposeAsync();
+        await Receiver.DisposeAsync();
+        await Sender.DisposeAsync();
+    }
+}

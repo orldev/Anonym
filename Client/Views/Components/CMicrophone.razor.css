@@ -1,0 +1,18 @@
+div {
+    display: flex;
+}
+._q {
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: center;
+    justify-items: center;
+}
+._w {
+    z-index: 0;
+    grid-area: 1 / 1;
+}
+._e {
+    z-index: 1;
+    grid-area: 1 / 1;
+}

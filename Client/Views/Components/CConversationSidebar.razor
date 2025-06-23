@@ -1,0 +1,102 @@
+@* 
+    A chat interface component that displays and manages multiple dialogue sessions.
+    Features:
+    - Displays current user ID with copy functionality
+    - Search functionality to start new chats
+    - Ordered list of active dialogues
+    - Visual indication of active conversation
+    - Dialogue management (add/remove)
+*@
+@inherits CaptureUnmatchedParameters
+@inject ILocalStorage LocalStorage
+
+<div class="@Classes _q" @attributes="@Attributes">
+    <div class="_no_s _w">
+        <!-- User ID display with copy functionality -->
+        <CCopyClipboard Value="@_userId">
+            <p class="_wp">@context</p>
+        </CCopyClipboard>
+        <p class="_wp">your login for the chat|</p>
+    </div>
+    <div class="_e">
+        <!-- Search component for new chats -->
+        <CSearch Label="chat search" OnFunc="@_onAppend"/>
+        <div class="_r">
+            @if (Items is not null)
+            {
+                <!-- Ordered list of dialogues -->
+                foreach (var (key, item) in Items.GetOrderedItems())
+                {
+                    <CDialogue Value="item"
+                               OnSelect="@OnSelect"
+                               OnDelete="@_onDelete"
+                               class="@(Dialogue?.UserId == key ? "_aa" : "")"/>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Gets the currently active dialogue from cascading context.
+    /// </summary>
+    [CascadingParameter] public Dialogue? Dialogue { get; set; }
+
+    /// <summary>
+    /// Gets or sets the collection of active dialogues.
+    /// </summary>
+    /// <remarks>
+    /// Uses a concurrent ordered dictionary to maintain thread-safe, ordered dialogues.
+    /// </remarks>
+    [Parameter] public ConcurrentOrderedDictionary<string, Dialogue>? Items { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback invoked when a dialogue is selected.
+    /// </summary>
+    /// <remarks>
+    /// Required parameter. Triggered when user clicks on a dialogue.
+    /// </remarks>
+    [Parameter, EditorRequired] public required Func<Dialogue, Task> OnSelect { get; set; }
+
+    private string? _userId; // Current user's identifier
+
+    /// <summary>
+    /// Initializes the component by loading the current user's ID from local storage.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        var secret = await LocalStorage.GetObjectAsync<Secret>(Secret.Key);
+        _userId = secret?.UserIdentifier;
+    }
+
+    /// <summary>
+    /// Handles adding a new dialogue from search results.
+    /// </summary>
+    /// <param name="value">The user ID to start a new dialogue with</param>
+    /// <remarks>
+    /// Inserts the new dialogue at the top of the list and updates the UI.
+    /// </remarks>
+    private async Task _onAppend(string value)
+    {
+        Items?.Insert(0, value, new Dialogue
+        {
+            UserId = value
+        });
+        await InvokeAsync(StateHasChanged);
+    }
+    
+    /// <summary>
+    /// Handles dialogue deletion.
+    /// </summary>
+    /// <param name="value">The dialogue to remove</param>
+    /// <remarks>
+    /// Removes the dialogue from both the collection and local storage.
+    /// </remarks>
+    private async Task _onDelete(Dialogue value)
+    {
+        Items?.TryRemove(value.UserId, out _);
+        await LocalStorage.RemoveAsync(value.UserId);
+        await InvokeAsync(StateHasChanged);
+    }
+}

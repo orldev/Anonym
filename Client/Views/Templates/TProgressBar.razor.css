@@ -1,0 +1,11 @@
+._q {
+    width: 100%;
+    background-color: var(--color-border);
+    position: relative;
+    height: 0.25rem;
+}
+._w {
+    height: 100%;
+    background-color: var(--color-text);
+    transition: width 0.3s ease;
+}

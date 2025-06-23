@@ -1,0 +1,54 @@
+@* 
+    A generic input component with two-way binding and change event handling.
+*@
+@inherits CaptureUnmatchedParameters
+@typeparam TItem
+
+<input id="@_id" 
+       autocomplete="off" 
+       class="@Classes _q" 
+       @attributes="@Attributes" 
+       placeholder="@Label" 
+       @bind="@Value"
+       @bind:event="oninput"
+       @bind:after="HandleValueChanged"/>
+
+@code {
+    /// <summary>
+    /// Gets or sets the label/placeholder text for the input.
+    /// </summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>
+    /// Gets or sets the value of the input.
+    /// </summary>
+    [Parameter] public TItem? Value { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback that will be invoked when the value changes.
+    /// </summary>
+    [Parameter] public EventCallback<TItem?> ValueChanged { get; set; }
+
+    private string? _id;
+
+    /// <summary>
+    /// Initializes the component by generating a unique ID for the input element.
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        _id = Guid.NewGuid().ToString();
+        base.OnInitialized();
+    }
+    
+    /// <summary>
+    /// Handles the value changed event by invoking the ValueChanged callback.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <remarks>
+    /// This method is automatically called after each input change due to the @bind:after directive.
+    /// </remarks>
+    private async Task HandleValueChanged()
+    {
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

@@ -1,0 +1,8 @@
+._q {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    display: flex;
+    gap: 0.25rem;
+    width: 100%;
+}

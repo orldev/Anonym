@@ -1,0 +1,42 @@
+._q {
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    border: 1px solid var(--color-text);
+    padding: 0.75rem 1.5rem;
+    max-height: 12.5rem;
+}
+._w {
+    display: flex;
+    color: var(--color-border);
+    font-size: 0.88rem;
+    line-height: 100%;
+    border: none;
+    background: transparent;
+    padding: 0;
+}
+    ._w:hover {
+        color: var(--color-text);
+    }
+span:hover {
+    filter: brightness(0) saturate(100%) invert(4%) sepia(4%) saturate(4184%) hue-rotate(163deg) brightness(99%) contrast(91%);
+}    
+._pulse {
+    animation: ease pulse 2s infinite;
+}
+    @keyframes pulse {
+        0% {
+            /* --color-text */
+            filter: brightness(0) saturate(100%) invert(4%) sepia(4%) saturate(4184%) hue-rotate(163deg) brightness(99%) contrast(91%);
+        }
+        50% {
+            /* --color-border */
+            filter: brightness(0) saturate(100%) invert(53%) sepia(6%) saturate(410%) hue-rotate(166deg) brightness(97%) contrast(85%);
+        }
+        100% {
+            /* --color-text */
+            filter: brightness(0) saturate(100%) invert(4%) sepia(4%) saturate(4184%) hue-rotate(163deg) brightness(99%) contrast(91%);
+        }
+    }

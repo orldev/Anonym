@@ -1,0 +1,144 @@
+@* 
+    A reusable timer component that tracks and displays elapsed time.
+*@
+@using System.Timers
+@implements IDisposable
+
+@if (ChildContent is not null)
+{
+    @ChildContent(TimeDisplay)
+}
+
+@code {
+    /// <summary>
+    /// Gets or sets the child content render fragment that receives the formatted time string.
+    /// </summary>
+    /// <remarks>
+    /// The render fragment receives a string parameter formatted as "hh:mm:ss" representing the elapsed time.
+    /// </remarks>
+    [Parameter] public RenderFragment<string>? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the timer is enabled.
+    /// </summary>
+    /// <remarks>
+    /// When set to true, the timer will start (if not already running).
+    /// When set to false, the timer will stop (if currently running).
+    /// </remarks>
+    [Parameter] public bool Enable { get; set; }
+
+    private Timer? _timer;
+    private TimeSpan _elapsedTime = TimeSpan.Zero;
+    private DateTime _startTime;
+    private bool _isRunning;
+    
+    /// <summary>
+    /// Gets the current elapsed time formatted as "hh:mm:ss".
+    /// </summary>
+    private string TimeDisplay => _elapsedTime.ToString(@"hh\:mm\:ss");
+
+    /// <summary>
+    /// Initializes the component by creating and configuring the timer.
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        _timer = new Timer(1000);
+        _timer.Elapsed += UpdateTime;
+        _timer.AutoReset = true;
+    }
+
+    /// <summary>
+    /// Handles parameter changes to start or stop the timer based on the Enable parameter.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        switch (Enable)
+        {
+            case true when !_isRunning:
+                Start();
+                break;
+            case false when _isRunning:
+                Stop();
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Starts the timer and begins tracking elapsed time.
+    /// </summary>
+    /// <remarks>
+    /// If the timer is already running, this method does nothing.
+    /// The timer updates every second and maintains accurate elapsed time even if started after being paused.
+    /// </remarks>
+    private void Start()
+    {
+        if (_isRunning) return;
+        
+        _isRunning = true;
+        _startTime = DateTime.Now - _elapsedTime;
+        _timer?.Start();
+    }
+
+    /// <summary>
+    /// Stops the timer and preserves the current elapsed time.
+    /// </summary>
+    /// <remarks>
+    /// If the timer is not running, this method does nothing.
+    /// The elapsed time is preserved and will resume from the same point if started again.
+    /// </remarks>
+    private void Stop()
+    {
+        if (!_isRunning) return;
+        
+        _isRunning = false;
+        _timer?.Stop();
+        _elapsedTime = DateTime.Now - _startTime;
+    }
+
+    /// <summary>
+    /// Resets the timer to zero and optionally restarts it based on the Enable parameter.
+    /// </summary>
+    /// <remarks>
+    /// This method:
+    /// 1. Stops the timer if running
+    /// 2. Resets elapsed time to zero
+    /// 3. Forces a UI update
+    /// 4. Restarts the timer if Enable is true
+    /// </remarks>
+    public void Reset()
+    {
+        _isRunning = false;
+        _timer?.Stop();
+        _elapsedTime = TimeSpan.Zero;
+        StateHasChanged();
+
+        // Automatically restart if Enable is true
+        if (Enable)
+        {
+            Start();
+        }
+    }
+
+    /// <summary>
+    /// Updates the elapsed time and triggers a UI refresh.
+    /// </summary>
+    /// <param name="sender">The event sender (unused).</param>
+    /// <param name="e">The elapsed event arguments (unused).</param>
+    /// <remarks>
+    /// This callback is invoked every second by the timer.
+    /// It calculates the new elapsed time and requests a UI update.
+    /// </remarks>
+    private void UpdateTime(object? sender, ElapsedEventArgs e)
+    {
+        _elapsedTime = DateTime.Now - _startTime;
+        InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Disposes of the timer resource when the component is disposed.
+    /// </summary>
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

@@ -1,0 +1,50 @@
+@* 
+    A reusable checkbox component with two-way binding and change event handling.
+*@
+@inherits CaptureUnmatchedParameters
+
+<input id="@_id" 
+       type="checkbox" 
+       class="@Classes _q" 
+       @attributes="@Attributes" 
+       @bind="@Value"
+       @bind:event="oninput"
+       @bind:after="HandleValueChanged">
+
+@code {
+    /// <summary>
+    /// Gets or sets the checked state of the checkbox.
+    /// </summary>
+    [Parameter] public bool Value { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback that's invoked when the checked state changes.
+    /// </summary>
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+
+    private string? _id;
+
+    /// <summary>
+    /// Initializes the component by generating a unique identifier.
+    /// </summary>
+    /// <remarks>
+    /// The generated ID ensures proper accessibility when used with label elements.
+    /// </remarks>
+    protected override void OnInitialized()
+    {
+        _id = Guid.NewGuid().ToString();
+        base.OnInitialized();
+    }
+    
+    /// <summary>
+    /// Handles the checkbox state change and invokes the ValueChanged callback.
+    /// </summary>
+    /// <returns>A Task representing the asynchronous operation.</returns>
+    /// <remarks>
+    /// This method is triggered immediately after each change due to the oninput binding.
+    /// </remarks>
+    private async Task HandleValueChanged()
+    {
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

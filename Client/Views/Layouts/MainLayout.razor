@@ -1,0 +1,11 @@
+﻿@inherits LayoutComponentBase
+@attribute [Authorize]
+
+<AuthorizeView>
+    <Authorized>
+        @Body
+    </Authorized>
+    <NotAuthorized>
+        <Authorize/>
+    </NotAuthorized>
+</AuthorizeView>

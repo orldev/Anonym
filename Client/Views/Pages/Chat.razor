@@ -1,0 +1,206 @@
+﻿@* 
+    Main chat interface component that manages conversations and message handling.
+    Features:
+    - Two-panel chat interface (sidebar + conversation)
+    - Real-time message receipt tracking
+    - Encrypted message transfer
+    - Conversation caching and persistence
+    - Notification system
+*@
+@page "/"
+@inject ILocalStorage LocalStorage
+@inject HubConnection HubConnection
+@inject IReactiveTransferReceiver Receiver
+@inject IReactiveTransferSender Sender
+@inject ISymmetricCipher Cipher
+@inject ILogger<Chat> Logger
+@implements IAsyncDisposable
+@attribute [Authorize]
+<PageTitle>Chat</PageTitle>
+
+<TNotification @ref="_provider"/>
+<section>
+    <CascadingValue Value="@_dialogue">
+        <!-- Conversation sidebar (left panel) -->
+        <CConversationSidebar class="box-a"
+                              Items="@_cache"
+                              OnSelect="@Select"/>
+        <!-- Active conversation view (right panel) -->
+        <CConversation class="box-b"/>
+    </CascadingValue>
+
+    <!-- Mobile layout toggle (hidden on desktop) -->
+    <TInputCheckbox @bind-Value="_isChecked"/>
+</section>
+
+@code {
+    private TNotification? _provider; // Notification service reference
+    private readonly ConcurrentOrderedDictionary<string, Dialogue> _cache = new(); // Cached conversations
+    private Dialogue? _dialogue; // Currently active dialogue
+    private bool _isChecked; // Mobile layout toggle state
+    
+    /// <summary>
+    /// Initializes the chat interface by:
+    /// 1. Loading cached conversations
+    /// 2. Selecting the most recent conversation
+    /// 3. Starting SignalR connection
+    /// 4. Setting up message handlers
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        await InitializeCacheAsync();
+        if (_cache.Values.FirstOrDefault() is { } value)
+            await Select(value);
+
+        await HubConnection.StartAsync();  
+        Sender.OnAcknowledgeReceipted += OnAcknowledgeReceipted;
+        Receiver.TransferCompleted += TransferCompleted;
+    }
+
+    /// <summary>
+    /// Handles message receipt acknowledgments.
+    /// </summary>
+    /// <param name="sessionId">The ID of the acknowledged message</param>
+    /// <remarks>
+    /// Updates message status to "Received" in the corresponding dialogue.
+    /// </remarks>
+    private async Task OnAcknowledgeReceipted(string sessionId)
+    {
+        var dialogue = _cache.GetOrderedItems().FirstOrDefault(x =>
+            x.Value.Messages.Exists(i => i.SessionId == sessionId)).Value;
+        
+        if (dialogue is not null)
+        {
+            _cache.AddOrUpdate(dialogue.UserId, e =>
+            {
+                var message = e.Messages.Find(x => x.SessionId == sessionId);
+                if (message is not null)
+                {
+                    message.DeliveryStatus = MessageDeliveryStatus.Received;
+                }
+            }, out var value);
+            
+            await LocalStorage.SaveObjectAsync($"{value.UserId}", value);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    /// <summary>
+    /// Selects a conversation and makes it active.
+    /// </summary>
+    /// <param name="value">The dialogue to select</param>
+    /// <remarks>
+    /// Also toggles mobile layout when selecting conversations.
+    /// </remarks>
+    private async Task Select(Dialogue value)
+    {
+        if (_cache.TryGetValue(value.UserId, out var dialogue))
+        {
+            _dialogue = dialogue;
+            _isChecked = !_isChecked; // Toggle mobile layout
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    
+    /// <summary>
+    /// Builds appropriate notifications for incoming messages.
+    /// </summary>
+    /// <param name="transferId">Sender user ID</param>
+    /// <param name="binary">Message content</param>
+    /// <remarks>
+    /// Creates different notifications based on message type:
+    /// - Text messages
+    /// - Voice messages
+    /// - Call requests
+    /// - File transfers
+    /// </remarks>
+    private void NotificationBuilder(string transferId, Binary binary)
+    {
+        if (_dialogue?.UserId == transferId) return;
+        
+        var context = binary.MimeType switch
+        {
+            "string" => binary.Bytes.GetUtf8String(),
+            "voice" => "Voice message",
+            "call" => "Makes a call",
+            _ => "File received"
+        };
+        
+        _provider?._onBuild(transferId, context);
+    }
+    
+    /// <summary>
+    /// Handles completed message transfers.
+    /// </summary>
+    /// <param name="transferId">Sender user ID</param>
+    /// <param name="bytes">Encrypted message bytes</param>
+    /// <remarks>
+    /// Performs:
+    /// 1. Message decryption
+    /// 2. Notification generation
+    /// 3. Conversation cache update
+    /// 4. Local storage persistence
+    /// </remarks>
+    private async Task TransferCompleted(string transferId, byte[] bytes)
+    {
+        var decrypt = await Cipher.DecryptAsync(bytes);
+        var binary = decrypt.DeserializeToBinary();
+        
+        NotificationBuilder(transferId, binary);
+        
+        _cache.AddOrUpdate(transferId, e =>
+        {
+            e.UserId = transferId;
+            e.Messages.Insert(0, new Message(binary, MessageDirection.Incoming));
+        }, out var value);
+        
+        await LocalStorage.SaveObjectAsync($"{value.UserId}", value);
+        
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Initializes the conversation cache from local storage.
+    /// </summary>
+    /// <remarks>
+    /// Loads and sorts conversations by most recent message.
+    /// Handles potential storage errors gracefully.
+    /// </remarks>
+    private async Task InitializeCacheAsync()
+    {
+        try
+        {
+            var keys = await LocalStorage.KeysAsync();
+            var unsortedDialogues = new List<(string Key, Dialogue Dialogue, DateTime LatestMessageTime)>();
+            
+            foreach (var key in keys.Where(x => x.Contains("#")))
+            {
+                var value = await LocalStorage.GetObjectAsync<Dialogue>(key);
+                if (value is null) continue;
+                
+                var latestMessageTime = value.Messages.Max(m => m.DateTime);
+                unsortedDialogues.Add((key, value, latestMessageTime));
+            }
+            
+            foreach (var item in unsortedDialogues
+                         .OrderBy(x => x.LatestMessageTime))
+            {
+                _cache.TryAdd(item.Key, item.Dialogue);
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.LogError("{Error}", e);
+        }
+    }
+    
+    /// <summary>
+    /// Cleans up resources when the component is disposed.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        await HubConnection.DisposeAsync();
+        await Receiver.DisposeAsync();
+        await Sender.DisposeAsync();
+    }
+}

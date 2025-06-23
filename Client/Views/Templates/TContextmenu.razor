@@ -1,0 +1,43 @@
+@* 
+    A component that combines long-press detection with conditional content rendering.
+*@
+@inherits CaptureUnmatchedParameters
+
+<div class="@Classes _q" @attributes="@Attributes">
+    <TLongPress OnEvent="_onTask" Duration="1200">
+        @ChildContent
+    </TLongPress>
+    @if (_isPressing)
+    {
+        @ItemsContent(EventCallback.Factory.Create(this, _onTask))
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the main content that will trigger the long-press detection.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets the content to display when a long-press is detected.
+    /// </summary>
+    /// <remarks>
+    /// This render fragment receives an <see cref="EventCallback"/> that can be used
+    /// to toggle the pressed state when invoked (typically used for close/dismiss actions).
+    /// The content will only render while <see cref="_isPressing"/> is true.
+    /// </remarks>
+    [Parameter] public required RenderFragment<EventCallback> ItemsContent { get; set; }
+    
+    private bool _isPressing;
+
+    /// <summary>
+    /// Toggles the pressed state when called by the long-press detector.
+    /// </summary>
+    /// <remarks>
+    /// This method is called:
+    /// 1. When a 1200ms long-press is detected (toggles to true)
+    /// 2. When the provided EventCallback is invoked (typically to toggle back to false)
+    /// </remarks>
+    private void _onTask() => _isPressing = !_isPressing;
+}

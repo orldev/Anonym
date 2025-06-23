@@ -1,0 +1,82 @@
+@* 
+    A composite input control with multiple input modes (text, file, voice, call).
+    Features:
+    - Text input with send capability
+    - File upload option (when no text entered)
+    - Voice recording option (when no text entered)
+    - Call initiation option (when no text entered)
+    - Automatic binary conversion of all inputs
+*@
+<div class="_q">
+    <TTextarea Label="message..." @bind-Value="_value" OnKeyDown="@_onString"/>
+    @if (string.IsNullOrEmpty(_value))
+    {
+        <TImportFile OnUpload="@_onFile">
+            <span class="@(context ? "_pulse" : "") fi_plus"></span>
+        </TImportFile>
+        <TMicrophone Bytes="@_onVoice" Enable="false">
+            <span class="@(context.Item2 ? "_pulse" : "") fi_mic-icon" onclick="@context.Item1"></span>
+        </TMicrophone>
+        <TRoute Value="@UserId">
+            <span class="fi_phone-icon" @onclick="_onCall"></span>
+        </TRoute>
+    }
+    else
+    {
+        <button class="_w" @onclick="_onString">
+            send
+        </button>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the current user ID from cascading context.
+    /// </summary>
+    [CascadingParameter] public string? UserId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback that handles all binary data submissions.
+    /// </summary>
+    /// <remarks>
+    /// Required parameter that receives:
+    /// - Text messages (as UTF-8 bytes)
+    /// - Uploaded files
+    /// - Voice recordings
+    /// - Call initiation signals
+    /// </remarks>
+    [Parameter, EditorRequired] public required EventCallback<Binary> OnBinary { get; set; }
+    
+    private string? _value; // Backing field for textarea binding
+    
+    /// <summary>
+    /// Handles text submission and converts it to binary format.
+    /// </summary>
+    private async Task _onString()
+    {
+        if (string.IsNullOrEmpty(_value) || string.IsNullOrWhiteSpace(_value)) return;
+        
+        await OnBinary.InvokeAsync(new Binary(_value.GetUtf8Bytes(), "string"));
+        _value = null; // Reset input after submission
+    }
+    
+    /// <summary>
+    /// Handles file upload completion.
+    /// </summary>
+    /// <param name="binary">The uploaded file data</param>
+    private async Task _onFile(Binary binary) 
+        => await OnBinary.InvokeAsync(binary);
+    
+    /// <summary>
+    /// Handles voice recording completion.
+    /// </summary>
+    /// <param name="value">The recorded audio data</param>
+    private async Task _onVoice(byte[] value) 
+        => await OnBinary.InvokeAsync(new Binary(value, "voice"));
+    
+    /// <summary>
+    /// Handles call initiation.
+    /// </summary>
+    private async Task _onCall() =>
+        await OnBinary.InvokeAsync(new Binary([], "call"));
+}

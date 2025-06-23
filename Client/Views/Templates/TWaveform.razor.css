@@ -1,0 +1,14 @@
+._q {
+    height: 350px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    gap: 0.19rem;
+}
+._w {
+    background: var(--color-text);
+    width: 3.81rem;
+    border-radius: 3.75rem;
+    transition: height 0.8s ease-out; /* Smooth animation */
+}

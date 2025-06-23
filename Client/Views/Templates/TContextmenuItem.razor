@@ -1,0 +1,15 @@
+@* 
+    A simple text display component that renders a label within a styled container.
+*@
+@inherits CaptureUnmatchedParameters
+
+<div class="@Classes _w" @attributes="@Attributes">
+    <p class="_wp">@Label</p>
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the text label to display.
+    /// </summary>
+    [Parameter] public string? Label { get; set; }
+}

@@ -1,0 +1,38 @@
+@* 
+    A component that displays vertical bars with dynamically adjustable heights.
+*@
+@inherits CaptureUnmatchedParameters
+
+<div class="@Classes _q">
+    @foreach (var item in _currentHeights)
+    {
+        <div class="_w" style="height: @(item)px;"></div>
+    }
+</div>
+
+@code {
+    private int[] _currentHeights = [61, 61, 61, 61];
+
+    /// <summary>
+    /// Updates the heights of the bars based on the provided byte array values.
+    /// </summary>
+    /// <param name="bytes">Byte array used to calculate new heights.
+    /// Each byte value (0-255) is scaled to a height between 61px and 138px.
+    /// The values are applied sequentially to each bar, wrapping around if needed.
+    /// </param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <remarks>
+    /// The height calculation formula: 61px + (byteValue / 255 * 77)
+    /// This creates a range from 61px (minimum) to 138px (maximum).
+    /// The component automatically re-renders after updating the heights.
+    /// </remarks>
+    public async Task Update(byte[] bytes)
+    {
+        for (var i = 0; i < _currentHeights.Length; i++)
+        {
+            _currentHeights[i] = 61 + (int)(bytes[i % bytes.Length] / 255f * 77);
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+}

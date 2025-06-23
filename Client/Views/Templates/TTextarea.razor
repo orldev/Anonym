@@ -1,0 +1,120 @@
+@* 
+    A customizable textarea component with dynamic row adjustment and keyboard event handling.
+*@
+@inherits CaptureUnmatchedParameters
+
+<textarea @onkeydown="@_onKeyDown"
+        @onkeydown:preventDefault="@_preventDefault" 
+        class="@Classes _q" 
+        @attributes="@Attributes" 
+        id="@_id" 
+        @bind="Value" 
+        rows="@(_rows + DeltaRow)" 
+        placeholder="@Label" 
+        @oninput="_onInput"></textarea>
+
+@code {
+    /// <summary>
+    /// Gets or sets the additional rows to add to the calculated row count.
+    /// Default value is 1.
+    /// </summary>
+    [Parameter] public int DeltaRow { get; set; } = 1;
+
+    /// <summary>
+    /// Gets or sets the placeholder text displayed when the textarea is empty.
+    /// </summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback that is invoked when the textarea value changes.
+    /// </summary>
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>
+    /// Gets or sets the current value of the textarea.
+    /// </summary>
+    [Parameter] public string? Value { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback that is invoked when Shift+Enter is pressed.
+    /// This parameter is required.
+    /// </summary>
+    [Parameter, EditorRequired] public required EventCallback OnKeyDown { get; set; }
+    
+    private bool _preventDefault;
+    private string? _id;
+    private int _rows;
+    
+    /// <summary>
+    /// Handles keyboard events in the textarea.
+    /// </summary>
+    /// <param name="e">The <see cref="KeyboardEventArgs"/> containing the key event details.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <remarks>
+    /// Specifically handles Shift+Enter combination by:
+    /// 1. Preventing default behavior (form submission/new line)
+    /// 2. Invoking the <see cref="OnKeyDown"/> callback
+    /// </remarks>
+    private async Task _onKeyDown(KeyboardEventArgs e)
+    {
+        _preventDefault = false;
+        if (e is {Code: "Enter", ShiftKey: true})
+        {
+            // Prevent default Enter behavior (form submission/new line)
+            // You can choose to allow it by removing this block
+            _preventDefault = true;
+            await OnKeyDown.InvokeAsync();
+        }
+    }
+    
+    /// <summary>
+    /// Initializes the component by generating a unique ID for the textarea.
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        _id = Guid.NewGuid().ToString();
+        base.OnInitialized();
+    }
+    
+    /// <summary>
+    /// Handles input events in the textarea and updates the bound value.
+    /// </summary>
+    /// <param name="args">The <see cref="ChangeEventArgs"/> containing the new value.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    async Task _onInput(ChangeEventArgs args)
+    {
+        var value = args.Value?.ToString();
+        Value = value;
+        
+        await ValueChanged.InvokeAsync(Value);
+    }
+    
+    /// <summary>
+    /// Adjusts the row count based on the current value when parameters are set.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <remarks>
+    /// The row count is calculated by counting newline characters in the value
+    /// and adding the <see cref="DeltaRow"/> value.
+    /// </remarks>
+    protected override async Task OnParametersSetAsync()
+    {
+        _rows = IndexOfInCycle(Value ?? "");
+        
+        await base.OnParametersSetAsync();
+    }
+    
+    /// <summary>
+    /// Counts the number of newline characters in a string.
+    /// </summary>
+    /// <param name="str">The string to analyze.</param>
+    /// <returns>The count of newline characters in the string.</returns>
+    private static int IndexOfInCycle(string str)
+    {
+        var index = -1;
+        var count = 0;
+        while (-1 != (index = str.IndexOf('\n', index + 1)))
+            count++;
+        return count;
+    }
+}

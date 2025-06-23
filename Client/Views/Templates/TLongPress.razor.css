@@ -1,0 +1,13 @@
+._q {
+    box-sizing: border-box;
+    border: 0;
+    background: transparent;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex-direction: column;
+    width: 100%;
+}
+._q:hover {}

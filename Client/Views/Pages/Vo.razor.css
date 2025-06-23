@@ -1,0 +1,30 @@
+/* Mobile */
+section {
+    padding: 1rem;
+    gap: 3.875rem;
+}
+
+div {
+    display: flex;
+}
+._q {
+    flex-direction: column;
+    align-items: center;
+    gap: .75rem;
+    max-width: 350px;
+    width: 100%;
+}
+    ._q svg {
+        max-width: 100%;
+        height: auto;     
+        width: 350px;     
+    }
+    ._qp {
+        color: var(--color-border);
+        font-size: 1rem;
+        line-height: normal;
+    }
+._w {
+    flex-direction: column;
+    gap: 0.5rem;
+}

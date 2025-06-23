@@ -1,0 +1,103 @@
+@* 
+    A chat dialogue component that displays messages and handles message composition/sending.
+    Features:
+    - Displays message history in chronological order
+    - Shows upload progress for large files
+    - Supports multiple message types (text, voice, call, files)
+    - Encrypts and chunks large messages
+    - Maintains delivery status
+    - Auto-saves conversation state
+*@
+@inherits CaptureUnmatchedParameters
+@inject ILocalStorage LocalStorage
+@inject HubConnection HubConnection
+@inject IReactiveTransferSender Sender
+@inject ISymmetricCipher Cipher
+
+<CascadingValue Value="@Item?.UserId">
+    <div class="@Classes _q" @attributes="@Attributes">
+        <div class="_w">
+            @if (Item?.Messages is not null)
+            {
+                <!-- Message history display -->
+                foreach (var item in Item.Messages)
+                {
+                    <CMessage Value="item"/>
+                }
+            }
+        </div>
+        <div class="_e">
+            <!-- Progress bar for large uploads -->
+            @if (_progress > 0 && _binarySize >= ChunkSize)
+            {
+                <TProgressBar Value="@_progress"/>
+            }
+            <!-- Message composition component -->
+            <СMessageComposer OnBinary="_onTask"/>
+        </div>
+    </div>
+</CascadingValue>
+
+@code {
+    /// <summary>
+    /// Gets the current dialogue from cascading context.
+    /// </summary>
+    [CascadingParameter] public Dialogue? Item { get; set; }
+    
+    private const int ChunkSize = 82 * 1024; // 82KB chunk size for message splitting
+    private int _progress; // Current upload progress (0-100)
+    private int _binarySize; // Size of binary data being sent
+    
+    /// <summary>
+    /// Handles new message creation and transmission.
+    /// </summary>
+    /// <param name="binary">The message content to send</param>
+    /// <remarks>
+    /// Performs the following operations:
+    /// 1. Creates message wrapper
+    /// 2. Handles special message types (voice/call/files)
+    /// 3. Encrypts and chunks large messages
+    /// 4. Shows upload progress
+    /// 5. Updates delivery status
+    /// 6. Persists conversation state
+    /// </remarks>
+    private async Task _onTask(Binary binary)
+    {
+        if (Item is null) return;
+        
+        _binarySize = binary.Bytes.Length;
+        
+        var message = new Message(binary);
+        message.Context = binary.MimeType switch
+        {
+            { } a when a.Contains("/") => new Binary("The file has been transferred"u8.ToArray(), "string"),
+            "voice" => new Binary("The voice message has been transmitted"u8.ToArray(), "string"),
+            "call" => new Binary("The call invitation has been passed on"u8.ToArray(), "string"),
+            _ => message.Context
+        };
+        
+        if (HubConnection.State == HubConnectionState.Connected)
+        {
+            var bytes = binary.SerializeToBytes();
+            var encrypt = await Cipher.EncryptAsync(bytes);
+            
+            var observable = encrypt.Create(
+                progressCallback: async progress =>
+                {
+                    _progress = progress;
+                    await InvokeAsync(StateHasChanged);
+                },
+                chunkSize: ChunkSize,
+                cancellationToken: CancellationToken.None, 
+                progressBatchPercent: 10, 
+                useBackpressure: true);
+
+            await Sender.SendAsync(Item.UserId, observable, message.SessionId);
+            
+            message.DeliveryStatus = MessageDeliveryStatus.Sent;
+        }
+        
+        Item.Messages.Insert(0, message);
+        await LocalStorage.SaveObjectAsync($"{Item.UserId}", Item);
+    }
+}

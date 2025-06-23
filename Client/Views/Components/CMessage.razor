@@ -1,0 +1,83 @@
+@* 
+    A message display component that renders different content types with appropriate visual treatment.
+    Features:
+    - Supports multiple message types (text, voice, call, file, error)
+    - Direction-aware styling (incoming/outgoing)
+    - Delivery status indicators
+    - Timestamp display
+    - Automatic content type detection
+*@
+<div class="_q">
+    <div class="_w @(Value?.Direction == MessageDirection.Incoming ? "_rx" : "_tx")">
+        @switch (Value?.Context?.MimeType)
+        {
+            case "string":
+                <!-- Text message rendering -->
+                <p class="_wp"><TMultilineString Value="@Value?.Context?.Bytes.GetUtf8String()"/></p>
+                break;
+            case "voice":
+                <!-- Audio message rendering -->
+                <CAudioPlayer Bytes="@Value?.Context.Bytes">
+                    <p class="_wp _ul">Tap here to listen to the message.</p>
+                </CAudioPlayer>
+                break;
+            case "call":
+                <!-- Call invitation rendering -->
+                <TRoute Value="@UserId">
+                    <p class="_wp _ul">Tap here to accept a call.</p>
+                </TRoute>
+                break;
+            case "error":
+                <!-- Error state rendering -->
+                <p class="_wp">Remotely, the data size exceeds the allowed size</p>
+                break;
+            default:
+                <!-- File attachment rendering -->
+                <TExportFile Name="@StringExtension.GetRandomName("file_")" Binary="@Value?.Context">
+                    <p class="_wp _ul">@context</p>
+                </TExportFile>
+                break;
+        }
+        <div class="_e">
+            <div class="_t">
+                @switch (Value?.DeliveryStatus)
+                {
+                    case MessageDeliveryStatus.Sent:
+                        <!-- Single checkmark for sent -->
+                        <span class="fi_check"></span>
+                        break;
+                    case MessageDeliveryStatus.Received:
+                        <!-- Double checkmark for received -->
+                        <span class="fi_check"></span>
+                        <span class="fi_check"></span>
+                        break;
+                }
+            </div>
+            <!-- Timestamp display -->
+            <p class="_ep">@Value?.DateTime.ToString("hh:mm:ss.fff")</p>
+            <p class="_ep">@Value?.DateTime.ToString("dd")/</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Gets or sets the current user ID from cascading context.
+    /// </summary>
+    /// <remarks>
+    /// Used for call acceptance routing.
+    /// </remarks>
+    [CascadingParameter] public string? UserId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the message to display.
+    /// </summary>
+    /// <remarks>
+    /// Contains all message metadata including:
+    /// - Content type (MimeType)
+    /// - Direction (Incoming/Outgoing)
+    /// - Delivery status
+    /// - Timestamp
+    /// </remarks>
+    [Parameter] public Message? Value { get; set; }
+}

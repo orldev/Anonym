@@ -1,0 +1,97 @@
+@* 
+    A specialized text input control with reactive validation and throttled submission.
+    Features:
+    - Throttled input (800ms delay)
+    - Automatic whitespace trimming
+    - Distinct value checking
+    - Custom validation pattern (# + 11 alphanumeric chars)
+    - Server-side validation
+    - Automatic field clearing on successful match
+*@
+@using System.Reactive.Linq
+@using System.Reactive.Subjects
+@using System.Text.RegularExpressions
+@inject HttpClient HttpClient
+
+<input id="@_id" 
+       type="text" 
+       class="_q" 
+       placeholder="@Label" 
+       @bind="_value" 
+       @oninput="@_input.OnNext">
+
+@code {
+    /// <summary>
+    /// Gets or sets the label/placeholder text for the input field.
+    /// </summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>
+    /// Gets or sets the callback that's invoked when valid input is detected.
+    /// </summary>
+    /// <remarks>
+    /// Required parameter. Only triggered when:
+    /// 1. Input matches validation pattern (# + 11 alphanumeric chars)
+    /// 2. Server confirms the value exists
+    /// 3. Input passes all other validation checks
+    /// </remarks>
+    [Parameter, EditorRequired] public required EventCallback<string> OnFunc { get; set; }
+
+    private readonly Subject<ChangeEventArgs> _input = new();
+    private string? _id;
+    private string? _value;
+
+    /// <summary>
+    /// Initializes the component and sets up the reactive pipeline.
+    /// </summary>
+    /// <remarks>
+    /// Pipeline behavior:
+    /// 1. Throttles input to 800ms intervals
+    /// 2. Extracts and trims string value
+    /// 3. Filters duplicate values
+    /// 4. Processes through validation logic
+    /// </remarks>
+    protected override Task OnInitializedAsync()
+    {
+        _id = Guid.NewGuid().ToString();
+        _input
+            .Throttle(TimeSpan.FromMilliseconds(800))
+            .Select(e => (string?) e.Value)
+            .Select(e => e?.Trim())
+            .DistinctUntilChanged()
+            .SelectMany(_onTask)
+            .Subscribe();
+        return base.OnInitializedAsync();
+    }
+
+    /// <summary>
+    /// Validates and processes the input value.
+    /// </summary>
+    /// <param name="value">The input value to validate</param>
+    /// <returns>Always returns true to continue the observable chain</returns>
+    /// <remarks>
+    /// Validation steps:
+    /// 1. Checks for empty/null values
+    /// 2. Validates against regex pattern (# + 11 alphanumeric chars)
+    /// 3. Verifies existence with server
+    /// 4. Clears field and invokes callback on success
+    /// </remarks>
+    private async Task<bool> _onTask(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return true;
+        
+        var match = Regex.Match(value, "^#[a-z0-9]{11}$");
+        if (!match.Success) return true;
+        
+        var response = await HttpClient.PostAsJsonAsync("auxiliary/search", match.Value);
+        if (!response.IsSuccessStatusCode) return true;
+
+        var contains = await response.Content.ReadFromJsonAsync<bool>();
+        if (!contains) return true;
+        
+        // Clear field on successful validation
+        _value = string.Empty;
+        await OnFunc.InvokeAsync(value);
+        return true;
+    }
+}

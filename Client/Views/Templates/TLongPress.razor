@@ -1,0 +1,94 @@
+@* 
+    A component that detects and handles long press/touch interactions.
+*@
+@using System.Timers
+@implements IDisposable
+@inherits CaptureUnmatchedParameters
+
+<div id="@_id"
+     @attributes="@Attributes"
+     @onmousedown="@StartPress"
+     @onmouseup="@EndPress"
+     @ontouchstart="@StartPress"
+     @ontouchend="@EndPress"
+     class="@Classes _q">
+    @ChildContent
+</div>
+
+@code {
+     /// <summary>
+    /// Gets or sets the child content rendered inside the component.
+    /// </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Gets or sets the required press duration in milliseconds before triggering the event.
+    /// Default is 1000ms (1 second).
+    /// </summary>
+    [Parameter] public int Duration { get; set; } = 1000;
+
+    /// <summary>
+    /// Gets or sets the callback that is invoked when a long press is detected.
+    /// </summary>
+    [Parameter] public EventCallback OnEvent { get; set; }
+
+    private Timer? _pressTimer;
+    private string? _id;
+
+    /// <summary>
+    /// Initializes the component by generating a unique ID.
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        _id = Guid.NewGuid().ToString();
+        base.OnInitialized();
+    }
+    
+    /// <summary>
+    /// Handles the start of a press interaction (mouse or touch).
+    /// </summary>
+    /// <remarks>
+    /// Starts a timer that will trigger <see cref="OnEvent"/> if the press
+    /// lasts longer than <see cref="Duration"/>.
+    /// </remarks>
+    private void StartPress()
+    {
+        _pressTimer = new Timer(Duration);
+        _pressTimer.Elapsed += async (sender, e) => await HandleLongPress();
+        _pressTimer.AutoReset = false;
+        _pressTimer.Start();
+    }
+
+    /// <summary>
+    /// Handles the end of a press interaction (mouse or touch).
+    /// </summary>
+    /// <remarks>
+    /// Stops and disposes the press timer, preventing the <see cref="OnEvent"/>
+    /// from being triggered if called before <see cref="Duration"/> elapses.
+    /// </remarks>
+    private void EndPress()
+    {
+        _pressTimer?.Stop();
+        _pressTimer?.Dispose();
+    }
+
+    /// <summary>
+    /// Invokes the <see cref="OnEvent"/> callback when a long press is detected.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    private async Task HandleLongPress()
+    {
+        if (OnEvent.HasDelegate)
+        {
+            await OnEvent.InvokeAsync();
+        }
+    }
+
+    /// <summary>
+    /// Disposes the component's resources, including the press timer.
+    /// </summary>
+    public void Dispose()
+    {
+        _pressTimer?.Dispose();
+    }
+}

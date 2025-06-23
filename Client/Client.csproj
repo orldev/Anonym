@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+        <BlazorWebAssemblyEnableLinking>true</BlazorWebAssemblyEnableLinking>
+        <PublishTrimmed>true</PublishTrimmed>
+        <WasmEnableSIMD>true</WasmEnableSIMD>
+        <WasmEnableExceptionHandling>true</WasmEnableExceptionHandling>
+        <BlazorEnableCompression>true</BlazorEnableCompression>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="9.0.6" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.6" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.DataAnnotations.Validation" Version="3.2.0-rc1.20223.4" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.6" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.6" PrivateAssets="all" />
+        <PackageReference Include="Snail.Toolkit.Blazor.Extensions.File" Version="1.0.0" />
+        <PackageReference Include="Snail.Toolkit.Blazor.Extensions.LocalStorage" Version="1.0.1" />
+        <PackageReference Include="Snail.Toolkit.Blazor.Extensions.Microphone" Version="1.0.1" />
+        <PackageReference Include="Snail.Toolkit.SignalR.Reactive" Version="1.0.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js"/>
+    </ItemGroup>
+</Project>
